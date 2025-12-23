@@ -18,20 +18,30 @@ const App: React.FC = () => {
   const [units, setUnits] = useState<BarberUnit[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      const data = await fetchUnits();
-      if (data.length > 0) {
-        setUnits(data);
-      } else {
-        // Fallback to mock data if DB is empty or connection fails
-        console.log("Using mock data as fallback");
-        setUnits(MOCK_UNITS);
+  // Função centralizada para recarregar dados
+  const refreshData = async () => {
+    setLoading(true);
+    const data = await fetchUnits();
+    if (data.length > 0) {
+      setUnits(data);
+      
+      // Se houver uma unidade selecionada, atualiza seus dados também para refletir mudanças (ex: novos profissionais)
+      if (selectedUnit) {
+        const updatedSelected = data.find(u => u.id === selectedUnit.id);
+        if (updatedSelected) {
+          setSelectedUnit(updatedSelected);
+        }
       }
-      setLoading(false);
-    };
-    loadData();
+    } else {
+      // Fallback to mock data if DB is empty or connection fails
+      console.log("Using mock data as fallback");
+      setUnits(MOCK_UNITS);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    refreshData();
   }, []);
 
   const handleUnitSelect = (unit: BarberUnit) => {
@@ -224,7 +234,10 @@ const App: React.FC = () => {
         />
       )}
       {view === ViewState.ADMIN && (
-        <AdminView onBack={() => setView(ViewState.LANDING)} />
+        <AdminView 
+          onBack={() => setView(ViewState.LANDING)} 
+          onUpdate={refreshData}
+        />
       )}
     </>
   );

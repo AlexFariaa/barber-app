@@ -8,6 +8,7 @@ import { fetchUnits, createProfessional, updateProfessional, fetchUnitSettings, 
 
 interface AdminViewProps {
   onBack: () => void;
+  onUpdate: () => Promise<void>; // Função para forçar atualização no componente pai
 }
 
 type AdminTab = 'DASHBOARD' | 'PROFESSIONALS' | 'SETTINGS';
@@ -16,7 +17,7 @@ const DAYS_OF_WEEK = [
   'Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'
 ];
 
-export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
+export const AdminView: React.FC<AdminViewProps> = ({ onBack, onUpdate }) => {
   const [activeTab, setActiveTab] = useState<AdminTab>('DASHBOARD');
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -25,7 +26,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
   const [units, setUnits] = useState<BarberUnit[]>([]);
   const [allProfessionals, setAllProfessionals] = useState<Professional[]>([]);
   
-  // Settings State (Defaults to first unit initially, but select handles logic)
+  // Settings State
   const [settings, setSettings] = useState<UnitSettings>({
     unitId: '',
     webhookUrl: '',
@@ -101,6 +102,8 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
       schedule: Array.isArray(editingPro.schedule) ? editingPro.schedule.filter(d => d !== null && d !== undefined) : []
     };
 
+    let success = false;
+
     if (isNewPro) {
       const created = await createProfessional(editingPro.unitId, cleanPro);
       if (created) {
@@ -108,16 +111,24 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
         setAllProfessionals([...allProfessionals, created]);
         setEditingPro(null);
         showToast('Profissional cadastrado!');
+        success = true;
       }
     } else {
-      const success = await updateProfessional(cleanPro);
-      if (success) {
+      const updated = await updateProfessional(cleanPro);
+      if (updated) {
         // Update local list
         setAllProfessionals(allProfessionals.map(p => p.id === cleanPro.id ? cleanPro : p));
         setEditingPro(null);
         showToast('Profissional atualizado!');
+        success = true;
       }
     }
+
+    if (success) {
+      // Sincroniza com o App pai para que o cliente veja as mudanças
+      await onUpdate();
+    }
+
     setLoading(false);
   };
 
